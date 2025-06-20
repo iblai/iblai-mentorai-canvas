@@ -1,16 +1,24 @@
-let draggedWidth = 500;
-let errorCount = 0;
-let isIframeCollapsed = false;
+/* -- Modify the following for each implementation -- */
+
+// Provider of the LTI component
 let baseLmsDomain = "https://learn.iblai.app";
 let lmsCourseIdWithLTI = "course-v1:main+100+2025";
 let lmsXblockIdWithLTI =
   "block-v1:main+100+2025+type@ibl_mentor_xblock+block@883c10dfa79547eb9bce3b4123675b13";
+
+// Consumer of the LTI component
+let baseCanvasDomain = "https://ibleducation.instructure.com";
+let canvasItemPath = "/courses/106/modules/items/315";
+/* ----------------------------------- */
+
+// Boilerplate standard variables (no need to modify)
+let draggedWidth = 500;
+let errorCount = 0;
+let isIframeCollapsed = false;
 let iblMentorLogoUrl =
   "https://s3.us-east-1.amazonaws.com/iblai-app-dm-static/public-images/public/mentor/profile/mentorAI.png";
 let iblMentorSdkUrl =
   "https://assets.ibl.ai/web/mentorai.js?versionId=UXPLxzG8DMNTPN_g5z0QNA_tq7u8dr9I";
-let baseCanvasDomain = "https://ibleducation.instructure.com";
-let canvasItemPath = "/courses/106/modules/items/315";
 
 // Global variable for paths where LTI should be shown
 const LTI_ALLOWED_PATHS = [
