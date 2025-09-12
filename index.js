@@ -34,7 +34,7 @@ let cutOffWidth = 768;
 let iblMentorLogoUrl =
   "https://s3.us-east-1.amazonaws.com/iblai-app-dm-static/public-images/public/mentor/profile/mentorAI.png";
 let iblMentorSdkUrl =
-  "https://assets.ibl.ai/web/mentorai.js?versionId=UXPLxzG8DMNTPN_g5z0QNA_tq7u8dr9I";
+  "https://assets.ibl.ai/web/mentorai.js?versionId=_tupQs6xYqtYYtqURknTvHVypIRnLgWu";
 
 // Global variable for paths where LTI should be shown
 const LTI_ALLOWED_PATHS = [
@@ -126,14 +126,15 @@ function loginAndLaunchLTI() {
             formData.append("iss", iss.value);
 
             const iframe = document.createElement("iframe");
-            iframe.name = "myIframe";
-            iframe.style.display = "none";
+            iframe.name = "mentorAI";
+            iframe.title = "mentorAI";
+            // iframe.style.display = "none";
             document.body.appendChild(iframe);
 
             const form = document.createElement("form");
             form.method = "POST";
             form.action = "https://learn.iblai.app/lti/1p3/login/";
-            form.target = "myIframe";
+            form.target = "mentorAI";
 
             // Loop through formData and create input elements
             for (const [key, value] of formData.entries()) {
@@ -147,8 +148,7 @@ function loginAndLaunchLTI() {
             document.body.appendChild(form);
             form.submit();
             document.body.removeChild(form);
-
-            resolve(null);
+            resolve(iframe);
           } else {
             resolve(null);
           }
@@ -308,7 +308,7 @@ function handleIframeMessage(event) {
 // Function to delay execution
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-function launchLTI() {
+function launchLTI(iframe) {
   const container = document.getElementById("application");
   const isMobileDevice = window.innerWidth < cutOffWidth;
 
@@ -351,72 +351,144 @@ function launchLTI() {
   const lmsCourseIdWithLTI = courseLTIMap[courseId].lmsCourseIdWithLTI;
   const lmsXblockIdWithLTI = courseLTIMap[courseId].lmsXblockIdWithLTI;
   if (courseId && lmsCourseIdWithLTI && lmsXblockIdWithLTI) {
-    fetch(
-      `${baseLmsDomain}/lti/1p3/launch/${lmsCourseIdWithLTI}/${lmsXblockIdWithLTI}`,
-      { credentials: "include" }
-    ).then(async (response) => {
-      if (response.status === 401) {
-        if (errorCount < 10) {
-          await loginAndLaunchLTI();
-          launchLTI();
-        }
-        errorCount += 1;
-      } else {
-        const iframe = document.createElement("iframe");
-        iframe.src = `${baseLmsDomain}/lti/1p3/launch/${lmsCourseIdWithLTI}/${lmsXblockIdWithLTI}`;
-        iframe.style.width = `calc(100% - ${resizerWidth}px)`;
-        iframe.style.height = "100%";
-        iframe.style.border = "none";
-        iframe.allowFullscreen = true;
+    iframe.style.width = `calc(100% - ${resizerWidth}px)`;
+    iframe.style.height = "100%";
+    iframe.style.border = "none";
+    iframe.allowFullscreen = true;
 
-        const messageHandler = handleIframeMessage;
-        window.addEventListener("message", messageHandler);
+    const messageHandler = handleIframeMessage;
+    window.addEventListener("message", messageHandler);
 
-        let isDragging = false;
+    let isDragging = false;
 
-        const stopDragging = () => {
-          if (isDragging) {
-            setCookie("iframeWidth", draggedWidth, 7);
-          }
-          isDragging = false;
-          document.body.style.cursor = "";
-        };
-
-        const handleMouseMove = (e) => {
-          if (!isDragging) return;
-          const newWidth = window.innerWidth - e.clientX;
-
-          if (newWidth < 300) return;
-          if (newWidth > 500) return;
-
-          draggedWidth = newWidth;
-          iframeWrapper.style.width = `${draggedWidth}px`;
-          const wrapper = document.getElementById("wrapper");
-          if (wrapper) {
-            wrapper.style.marginRight = isMobileDevice
-              ? "0px"
-              : `${draggedWidth}px`;
-          }
-        };
-
-        const handleMouseDown = (e) => {
-          isDragging = true;
-          document.body.style.cursor = "col-resize";
-          e.preventDefault();
-        };
-
-        resizer.addEventListener("mousedown", handleMouseDown);
-        window.addEventListener("mousemove", handleMouseMove);
-        window.addEventListener("mouseup", stopDragging);
-        window.addEventListener("mouseleave", stopDragging);
-
-        iframeWrapper.appendChild(resizer);
-        iframeWrapper.appendChild(iframe);
-        container.appendChild(iframeWrapper);
-
-        createLogoButton(isMobileDevice);
+    const stopDragging = () => {
+      if (isDragging) {
+        setCookie("iframeWidth", draggedWidth, 7);
       }
-    });
+      isDragging = false;
+      document.body.style.cursor = "";
+    };
+
+    const handleMouseMove = (e) => {
+      if (!isDragging) return;
+      const newWidth = window.innerWidth - e.clientX;
+
+      if (newWidth < 300) return;
+      if (newWidth > 500) return;
+
+      draggedWidth = newWidth;
+      iframeWrapper.style.width = `${draggedWidth}px`;
+      const wrapper = document.getElementById("wrapper");
+      if (wrapper) {
+        wrapper.style.marginRight = isMobileDevice
+          ? "0px"
+          : `${draggedWidth}px`;
+      }
+    };
+
+    const handleMouseDown = (e) => {
+      isDragging = true;
+      document.body.style.cursor = "col-resize";
+      e.preventDefault();
+    };
+
+    resizer.addEventListener("mousedown", handleMouseDown);
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", stopDragging);
+    window.addEventListener("mouseleave", stopDragging);
+
+    iframeWrapper.appendChild(resizer);
+    container.appendChild(iframeWrapper);
+    iframeWrapper.appendChild(iframe);
+    const courseId = extractCourseId();
+    if (!courseLTIMap.hasOwnProperty(courseId)) resolve(null);
+    const canvasItemPath = courseLTIMap[courseId].canvasItemPath;
+    if (canvasItemPath) {
+      fetch(`${baseCanvasDomain}${canvasItemPath}`, {
+        method: "GET",
+        credentials: "include", // if authentication cookies are needed
+      })
+        .then(async (response) => {
+          console.log("###################### response", response);
+          const htmlText = await response.text();
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(htmlText, "text/html");
+          const ltiMessageHint = doc.querySelector(
+            'input[name="lti_message_hint"]'
+          );
+          const loginHint = doc.querySelector('input[name="login_hint"]');
+          const clientId = doc.querySelector('input[name="client_id"]');
+          const ltiDeploymentId = doc.querySelector(
+            'input[name="lti_deployment_id"]'
+          );
+          const canvasEnvironment = doc.querySelector(
+            'input[name="canvas_environment"]'
+          );
+          const ltiStorageTarget = doc.querySelector(
+            'input[name="lti_storage_target"]'
+          );
+          const canvasRegion = doc.querySelector('input[name="canvas_region"]');
+          const targetLinkUri = doc.querySelector(
+            'input[name="target_link_uri"]'
+          );
+          const iss = doc.querySelector('input[name="iss"]');
+          if (
+            ltiMessageHint &&
+            loginHint &&
+            clientId &&
+            ltiDeploymentId &&
+            targetLinkUri &&
+            canvasEnvironment &&
+            canvasRegion &&
+            ltiStorageTarget &&
+            iss
+          ) {
+            const formData = new FormData();
+            formData.append("lti_message_hint", ltiMessageHint.value);
+            formData.append("login_hint", loginHint.value);
+            formData.append("client_id", clientId.value);
+            formData.append("lti_deployment_id", ltiDeploymentId.value);
+            formData.append("canvas_environment", canvasEnvironment.value);
+            formData.append("lti_storage_target", ltiStorageTarget.value);
+            formData.append("target_link_uri", targetLinkUri.value);
+            formData.append("canvas_region", canvasRegion.value);
+            formData.append("iss", iss.value);
+
+            // const iframe = document.createElement("iframe");
+            iframe.name = "mentorAI";
+            iframe.title = "mentorAI";
+            // iframe.style.display = "none";
+            // document.body.appendChild(iframe);
+
+            const form = document.createElement("form");
+            form.method = "POST";
+            form.action = "https://learn.iblai.app/lti/1p3/login/";
+            form.target = "mentorAI";
+
+            // Loop through formData and create input elements
+            for (const [key, value] of formData.entries()) {
+              const input = document.createElement("input");
+              input.type = "hidden";
+              input.name = key;
+              input.value = value;
+              form.appendChild(input);
+            }
+
+            document.body.appendChild(form);
+
+            form.submit();
+            document.body.removeChild(form);
+            // resolve(iframe);
+          } else {
+            // resolve(null);
+          }
+        })
+        .catch((error) => {
+          console.error("Error fetching initial page:", error);
+          reject(error);
+        });
+    }
+    createLogoButton(isMobileDevice);
   }
 
   function setCookie(name, value, days) {
@@ -433,12 +505,15 @@ function launchLTI() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  loadScript(iblMentorSdkUrl).then(() => {
+  loadScript(iblMentorSdkUrl).then(async () => {
     const iframeSelector = `iframe[src^="${baseLmsDomain}/lti"], iframe[title="mentorAI"]`;
 
     if (shouldShowLTI()) {
       loadCanvas();
-      launchLTI();
+      const iframe = await loginAndLaunchLTI();
+      if (iframe) {
+        launchLTI(iframe);
+      }
     }
 
     function handleIframes() {
