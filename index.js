@@ -128,6 +128,7 @@ function loginAndLaunchLTI() {
             const iframe = document.createElement("iframe");
             iframe.name = "mentorAI";
             iframe.title = "mentorAI";
+            iframe.allow = "clipboard-read; clipboard-write; microphone *; camera *; midi *; geolocation *; encrypted-media *; display-capture *";
             // iframe.style.display = "none";
             document.body.appendChild(iframe);
 
