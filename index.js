@@ -302,6 +302,24 @@ function handleIframeMessage(event) {
         wrapper.style.marginRight = "0";
       }
     }
+
+    // Handle ACTION:OPEN_NEW_WINDOW
+    if (
+      data.type === "ACTION:OPEN_NEW_WINDOW" &&
+      data.payload &&
+      data.payload.url
+    ) {
+      const popup = window.open(
+        data.payload.url,
+        "MentorAI",
+        `width=${width},height=${height},left=${left},top=${top},toolbar=no,location=no,directories=no,status=no,menubar=no,resizable=yes,scrollbars=yes`
+      );
+
+      // Ensure the popup is focused and on top
+      if (popup) {
+        popup.focus();
+      }
+    }
   } catch (error) {}
 }
 
@@ -409,7 +427,6 @@ function launchLTI(iframe) {
         credentials: "include", // if authentication cookies are needed
       })
         .then(async (response) => {
-          console.log("###################### response", response);
           const htmlText = await response.text();
           const parser = new DOMParser();
           const doc = parser.parseFromString(htmlText, "text/html");
