@@ -25,6 +25,7 @@ Before using the script, override the following environment-specific variables i
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `draggedWidth`       | Default width (in pixels) of the MentorAI sidebar iframe.                                                                    |
 | `baseLmsDomain`      | LMS domain where the LTI launch URL is hosted (e.g., `https://learn.iblai.app`).                                             |
+| `org`                | Organization slug used for the context API check (e.g., `main`). Used to verify if LTI is enabled for a course.             |
 | `lmsCourseIdWithLTI` | Full course identifier for the LTI launch (e.g., `course-v1:main+100+2025`).                                                 |
 | `lmsXblockIdWithLTI` | Unique xBlock identifier of the MentorAI LTI component (e.g., `block-v1:main+100+2025+type@ibl_mentor_xblock+block@abc...`). |
 | `baseCanvasDomain`   | Canvas domain to fetch page data (e.g., `https://ibleducation.instructure.com`).                                             |

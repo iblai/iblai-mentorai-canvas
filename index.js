@@ -1,28 +1,12 @@
 /* -- Modify the following for each implementation -- */
 
 // Provider of the LTI component
-let baseLmsDomain = "https://learn.iblai.app";
-// let lmsCourseIdWithLTI = "course-v1:main+100+2025";
-// let lmsXblockIdWithLTI =
-//   "block-v1:main+100+2025+type@ibl_mentor_xblock+block@883c10dfa79547eb9bce3b4123675b13";
-let courseLTIMap = {
-  106: {
-    lmsCourseIdWithLTI: "course-v1:main+100+2025",
-    lmsXblockIdWithLTI:
-      "block-v1:main+100+2025+type@ibl_mentor_xblock+block@883c10dfa79547eb9bce3b4123675b13",
-    canvasItemPath: "/courses/106/modules/items/315",
-  },
-  110: {
-    lmsCourseIdWithLTI: "course-v1:main+100+2025",
-    lmsXblockIdWithLTI:
-      "block-v1:main+100+2025+type@ibl_mentor_xblock+block@883c10dfa79547eb9bce3b4123675b13",
-    canvasItemPath: "/courses/106/modules/items/315",
-  },
-};
+let baseLmsDomain = "https://learn.iblai.org";
+let org = "canvas1"; // Organization slug for context API
+let ltiToolId = "219";
 
 // Consumer of the LTI component
 let baseCanvasDomain = "https://ibleducation.instructure.com";
-// let canvasItemPath = "/courses/106/modules/items/315";
 /* ----------------------------------- */
 
 // Boilerplate standard variables (no need to modify)
@@ -34,31 +18,27 @@ let cutOffWidth = 768;
 let iblMentorLogoUrl =
   "https://s3.us-east-1.amazonaws.com/iblai-app-dm-static/public-images/public/mentor/profile/mentorAI.png";
 let iblMentorSdkUrl =
-  "https://assets.ibl.ai/web/mentorai.js?versionId=_tupQs6xYqtYYtqURknTvHVypIRnLgWu";
+  "https://assets.ibl.ai/web/mentorai.js?versionId=VNInD4.A0b3XyyftPU6LqEVT8G9mrMJc";
 
 // Global variable for paths where LTI should be shown
 const LTI_ALLOWED_PATHS = [
   /^\/courses\/\d+\/.*$/, // Matches any path starting with /courses/{id}/
 ];
 
-// Global variable for paths where LTI should be explicitly hidden
-const LTI_HIDDEN_PATHS = (canvasItemPath) => [
-  new RegExp(`^${canvasItemPath}$`), // Hide in the specific Canvas item URL
-];
-
 // Function to check if current path matches any allowed pattern
-function shouldShowLTI() {
+async function shouldShowLTI() {
   const currentPath = window.location.pathname;
   const courseId = extractCourseId();
-  if (courseId && courseLTIMap.hasOwnProperty(courseId)) {
-    if (
-      LTI_HIDDEN_PATHS(courseLTIMap[courseId].canvasItemPath).some((pattern) =>
-        pattern.test(currentPath)
-      )
-    ) {
+  if (courseId) {
+    const pathAllowed = LTI_ALLOWED_PATHS.some((pattern) =>
+      pattern.test(currentPath)
+    );
+    if (!pathAllowed) {
       return false;
     }
-    return LTI_ALLOWED_PATHS.some((pattern) => pattern.test(currentPath));
+    // Check context API to verify LTI is enabled for this course
+    const contextEnabled = await checkLTIContextEnabled(courseId);
+    return contextEnabled;
   }
   return false;
 }
@@ -70,13 +50,37 @@ function extractCourseId() {
   return match ? match[1] : null;
 }
 
+// Function to check if LTI is enabled for the course via context API
+async function checkLTIContextEnabled(courseId) {
+  try {
+    const response = await fetch(
+      `${baseLmsDomain}/api/mentor-xblock/orgs/${org}/context/?context_id=${encodeURIComponent(
+        courseId
+      )}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    if (response.ok) {
+      const data = await response.json();
+      return data.enabled === true;
+    }
+    return false;
+  } catch (error) {
+    console.error("Error checking LTI context:", error);
+    return false;
+  }
+}
+
 function loginAndLaunchLTI() {
   return new Promise((resolve, reject) => {
     const courseId = extractCourseId();
-    if (!courseLTIMap.hasOwnProperty(courseId)) resolve(null);
-    const canvasItemPath = courseLTIMap[courseId].canvasItemPath;
-    if (canvasItemPath) {
-      fetch(`${baseCanvasDomain}${canvasItemPath}`, {
+    const canvasExternalToolItemPath = `${baseCanvasDomain}/courses/${courseId}/external_tools/${ltiToolId}/`;
+    if (canvasExternalToolItemPath) {
+      fetch(canvasExternalToolItemPath, {
         method: "GET",
         credentials: "include", // if authentication cookies are needed
       })
@@ -128,7 +132,8 @@ function loginAndLaunchLTI() {
             const iframe = document.createElement("iframe");
             iframe.name = "mentorAI";
             iframe.title = "mentorAI";
-            iframe.allow = "clipboard-read; clipboard-write; microphone *; camera *; midi *; geolocation *; encrypted-media *; display-capture *";
+            iframe.allow =
+              "clipboard-read; clipboard-write; microphone *; camera *; midi *; geolocation *; encrypted-media *; display-capture *";
             // iframe.style.display = "none";
             document.body.appendChild(iframe);
 
@@ -366,10 +371,7 @@ function launchLTI(iframe) {
   resizer.style.background = "#f0f4f9";
   resizer.style.height = "100%";
   const courseId = extractCourseId();
-  if (!courseLTIMap.hasOwnProperty(courseId)) return;
-  const lmsCourseIdWithLTI = courseLTIMap[courseId].lmsCourseIdWithLTI;
-  const lmsXblockIdWithLTI = courseLTIMap[courseId].lmsXblockIdWithLTI;
-  if (courseId && lmsCourseIdWithLTI && lmsXblockIdWithLTI) {
+  if (courseId) {
     iframe.style.width = `calc(100% - ${resizerWidth}px)`;
     iframe.style.height = "100%";
     iframe.style.border = "none";
@@ -420,10 +422,9 @@ function launchLTI(iframe) {
     container.appendChild(iframeWrapper);
     iframeWrapper.appendChild(iframe);
     const courseId = extractCourseId();
-    if (!courseLTIMap.hasOwnProperty(courseId)) resolve(null);
-    const canvasItemPath = courseLTIMap[courseId].canvasItemPath;
-    if (canvasItemPath) {
-      fetch(`${baseCanvasDomain}${canvasItemPath}`, {
+    const canvasExternalToolItemPath = `${baseCanvasDomain}/courses/${courseId}/external_tools/${ltiToolId}/`;
+    if (canvasExternalToolItemPath) {
+      fetch(canvasExternalToolItemPath, {
         method: "GET",
         credentials: "include", // if authentication cookies are needed
       })
@@ -480,7 +481,7 @@ function launchLTI(iframe) {
 
             const form = document.createElement("form");
             form.method = "POST";
-            form.action = "https://learn.iblai.app/lti/1p3/login/";
+            form.action = `${baseLmsDomain}/lti/1p3/login/`;
             form.target = "mentorAI";
 
             // Loop through formData and create input elements
@@ -526,7 +527,8 @@ document.addEventListener("DOMContentLoaded", () => {
   loadScript(iblMentorSdkUrl).then(async () => {
     const iframeSelector = `iframe[src^="${baseLmsDomain}/lti"], iframe[title="mentorAI"]`;
 
-    if (shouldShowLTI()) {
+    const showLTI = await shouldShowLTI();
+    if (showLTI) {
       loadCanvas();
       const iframe = await loginAndLaunchLTI();
       if (iframe) {
