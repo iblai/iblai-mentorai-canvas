@@ -139,7 +139,7 @@ function loginAndLaunchLTI() {
 
             const form = document.createElement("form");
             form.method = "POST";
-            form.action = "https://learn.iblai.app/lti/1p3/login/";
+            form.action = `${baseLmsDomain}/lti/1p3/login/`;
             form.target = "mentorAI";
 
             // Loop through formData and create input elements
@@ -299,34 +299,42 @@ border-radius: 50%;
 // Function to handle messages from iframe
 function handleIframeMessage(event) {
   const isMobileDevice = window.innerWidth < cutOffWidth;
+  let data = event.data;
   try {
-    const data = JSON.parse(event.data);
-    if (data.closeEmbed && data.collapseSidebarCopilot) {
-      toggleIframe(isMobileDevice, true);
-      const wrapper = document.getElementById("wrapper");
-      if (wrapper) {
-        wrapper.style.marginRight = "0";
-      }
+    console.log("################### handleIframeMessage ", event.data);
+    data = JSON.parse(data);
+  } catch {}
+  console.log("#################### data is ", data);
+  if (data.closeEmbed && data.collapseSidebarCopilot) {
+    toggleIframe(isMobileDevice, true);
+    const wrapper = document.getElementById("wrapper");
+    if (wrapper) {
+      wrapper.style.marginRight = "0";
     }
+  }
 
-    // Handle ACTION:OPEN_NEW_WINDOW
-    if (
-      data.type === "ACTION:OPEN_NEW_WINDOW" &&
-      data.payload &&
-      data.payload.url
-    ) {
-      const popup = window.open(
-        data.payload.url,
-        "MentorAI",
-        `width=${width},height=${height},left=${left},top=${top},toolbar=no,location=no,directories=no,status=no,menubar=no,resizable=yes,scrollbars=yes`
-      );
+  // Handle ACTION:OPEN_NEW_WINDOW
+  console.log("#################### data ");
+  console.log(data.type, data.payload, data.payload.url);
+  if (
+    data.type === "ACTION:OPEN_NEW_WINDOW" &&
+    data.payload &&
+    data.payload.url
+  ) {
+    console.log("################### inside the popup");
+    const popup = window.open(
+      data.payload.url,
+      "MentorAI",
+      `width=${width},height=${height},left=${left},top=${top},toolbar=no,location=no,directories=no,status=no,menubar=no,resizable=yes,scrollbars=yes`
+    );
 
-      // Ensure the popup is focused and on top
-      if (popup) {
-        popup.focus();
-      }
+    console.log("#################### popup ", popup);
+
+    // Ensure the popup is focused and on top
+    if (popup) {
+      popup.focus();
     }
-  } catch (error) {}
+  }
 }
 
 // Function to delay execution
