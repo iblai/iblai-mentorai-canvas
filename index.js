@@ -18,7 +18,7 @@ let cutOffWidth = 768;
 let iblMentorLogoUrl =
   "https://s3.us-east-1.amazonaws.com/iblai-app-dm-static/public-images/public/mentor/profile/mentorAI.png";
 let iblMentorSdkUrl =
-  "https://assets.ibl.ai/web/mentorai.js?versionId=VNInD4.A0b3XyyftPU6LqEVT8G9mrMJc";
+  "https://assets.ibl.ai/web/mentorai.js?versionId=tgINylOT9v0oBnUIwh2C3sboke26sByg";
 
 // Global variable for paths where LTI should be shown
 const LTI_ALLOWED_PATHS = [
@@ -301,10 +301,8 @@ function handleIframeMessage(event) {
   const isMobileDevice = window.innerWidth < cutOffWidth;
   let data = event.data;
   try {
-    console.log("################### handleIframeMessage ", event.data);
     data = JSON.parse(data);
   } catch {}
-  console.log("#################### data is ", data);
   if (data.closeEmbed && data.collapseSidebarCopilot) {
     toggleIframe(isMobileDevice, true);
     const wrapper = document.getElementById("wrapper");
@@ -314,21 +312,20 @@ function handleIframeMessage(event) {
   }
 
   // Handle ACTION:OPEN_NEW_WINDOW
-  console.log("#################### data ");
-  console.log(data.type, data.payload, data.payload.url);
   if (
     data.type === "ACTION:OPEN_NEW_WINDOW" &&
     data.payload &&
     data.payload.url
   ) {
-    console.log("################### inside the popup");
+    const popupWidth = 800;
+    const popupHeight = 600;
+    const left = (window.screen.width - popupWidth) / 2;
+    const top = (window.screen.height - popupHeight) / 2;
     const popup = window.open(
       data.payload.url,
-      "MentorAI",
-      `width=${width},height=${height},left=${left},top=${top},toolbar=no,location=no,directories=no,status=no,menubar=no,resizable=yes,scrollbars=yes`
+      "_blank",
+      `width=${popupWidth},height=${popupHeight},left=${left},top=${top},toolbar=no,location=yes,directories=no,status=no,menubar=no,resizable=yes,scrollbars=yes`
     );
-
-    console.log("#################### popup ", popup);
 
     // Ensure the popup is focused and on top
     if (popup) {

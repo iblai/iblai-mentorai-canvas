@@ -16,25 +16,20 @@ This JavaScript file injects and manages a MentorAI iframe widget into Canvas, a
 
 - Filters valid Canvas pages where the iframe should be injected.
 
-
 ## Configuration
 
 Before using the script, override the following environment-specific variables in the script or before it loads:
 
-| Variable             | Description                                                                                                                  |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `draggedWidth`       | Default width (in pixels) of the MentorAI sidebar iframe.                                                                    |
-| `baseLmsDomain`      | LMS domain where the LTI launch URL is hosted (e.g., `https://learn.iblai.app`).                                             |
-| `org`                | Organization slug used for the context API check (e.g., `main`). Used to verify if LTI is enabled for a course.             |
-| `lmsCourseIdWithLTI` | Full course identifier for the LTI launch (e.g., `course-v1:main+100+2025`).                                                 |
-| `lmsXblockIdWithLTI` | Unique xBlock identifier of the MentorAI LTI component (e.g., `block-v1:main+100+2025+type@ibl_mentor_xblock+block@abc...`). |
-| `baseCanvasDomain`   | Canvas domain to fetch page data (e.g., `https://ibleducation.instructure.com`).                                             |
-| `canvasItemPath`     | Path to the Canvas module item for login hint extraction (e.g., `/courses/106/modules/items/315`).                           |
-
+| Variable           | Description                                                                                                     |
+| ------------------ | --------------------------------------------------------------------------------------------------------------- |
+| `draggedWidth`     | Default width (in pixels) of the MentorAI sidebar iframe.                                                       |
+| `baseLmsDomain`    | LMS domain where the LTI launch URL is hosted (e.g., `https://learn.iblai.app`).                                |
+| `org`              | Organization slug used for the context API check (e.g., `main`). Used to verify if LTI is enabled for a course. |
+| `baseCanvasDomain` | Canvas domain to fetch page data (e.g., `https://ibleducation.instructure.com`).                                |
+| `ltiToolId`        | The Canvas external tool ID for the LTI integration. This is the numeric ID assigned by Canvas when the LTI tool is installed. It is used to construct the external tool URL path (`/courses/{courseId}/external_tools/{ltiToolId}/`) to fetch LTI launch parameters. You can find this ID in Canvas under Settings > Apps > App Configurations, or from the URL when viewing the tool. |
 
 Optional override:
 You may also override iblMentorLogoUrl and iblMentorSdkUrl for a custom logo or IBL SDK version.
-
 
 ## How It Works
 
@@ -42,27 +37,27 @@ You may also override iblMentorLogoUrl and iblMentorSdkUrl for a custom logo or 
 
 Only injects the iframe on specific course pages:
 
-  - Allowed paths match /courses/{id}/...
+- Allowed paths match /courses/{id}/...
 
-  - Avoids specific paths like the current canvasItemPath.
+- Avoids specific paths like the current canvasItemPath.
 
 ### 2. LTI Authentication
 
 When a session is not authenticated:
 
-  - Fetches login hints from the canvasItemPath HTML.
+- Fetches login hints from the canvasItemPath HTML.
 
-  - Constructs a POST form dynamically and submits it to the LMS LTI login endpoint.
+- Constructs a POST form dynamically and submits it to the LMS LTI login endpoint.
 
 ### 3. Iframe UI Behavior
 
 The MentorAI iframe appears as a sidebar with a draggable resizer.
 
-  - Width is saved in cookies for future visits.
+- Width is saved in cookies for future visits.
 
-  - A floating logo icon allows users to re-open the iframe when closed.
+- A floating logo icon allows users to re-open the iframe when closed.
 
-  - Listens to postMessage events to handle iframe-close requests.
+- Listens to postMessage events to handle iframe-close requests.
 
 ## Requirements
 
