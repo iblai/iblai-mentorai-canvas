@@ -18,7 +18,7 @@ let cutOffWidth = 768;
 let iblMentorLogoUrl =
   "https://s3.us-east-1.amazonaws.com/iblai-app-dm-static/public-images/public/mentor/profile/mentorAI.png";
 let iblMentorSdkUrl =
-  "https://assets.ibl.ai/web/mentorai.js?versionId=tgINylOT9v0oBnUIwh2C3sboke26sByg";
+  "https://assets.ibl.ai/web/mentorai.js?versionId=vhCMB8C._E4jmcdnuA4lOiETL9W_aLRB";
 
 // Global variable for paths where LTI should be shown
 const LTI_ALLOWED_PATHS = [
