@@ -18,7 +18,11 @@ let cutOffWidth = 768;
 let iblMentorLogoUrl =
   "https://s3.us-east-1.amazonaws.com/iblai-app-dm-static/public-images/public/mentor/profile/mentorAI.png";
 let iblMentorSdkUrl =
-  "https://assets.ibl.ai/web/mentorai.js?versionId=vhCMB8C._E4jmcdnuA4lOiETL9W_aLRB";
+  "https://assets.ibl.ai/web/mentorai.js?versionId=ySugLtwLUokq4oTeJFdISgk13EqN7DI1";
+let currentPopup = null;
+let popupMessageSource = null;
+let popupMessageOrigin = null;
+let popupCloseWatcher = null;
 
 // Global variable for paths where LTI should be shown
 const LTI_ALLOWED_PATHS = [
@@ -317,20 +321,87 @@ function handleIframeMessage(event) {
     data.payload &&
     data.payload.url
   ) {
+    // Close existing popup if open
+    if (currentPopup && !currentPopup.closed) {
+      currentPopup.close();
+    }
+    // Clear existing watcher
+    if (popupCloseWatcher) {
+      clearInterval(popupCloseWatcher);
+      popupCloseWatcher = null;
+    }
+
+    // Store the message source to send messages back
+    popupMessageSource = event.source;
+    popupMessageOrigin = event.origin;
+
     const popupWidth = 800;
     const popupHeight = 600;
     const left = (window.screen.width - popupWidth) / 2;
     const top = (window.screen.height - popupHeight) / 2;
-    const popup = window.open(
+    currentPopup = window.open(
       data.payload.url,
       "_blank",
       `width=${popupWidth},height=${popupHeight},left=${left},top=${top},toolbar=no,location=yes,directories=no,status=no,menubar=no,resizable=yes,scrollbars=yes`
     );
 
     // Ensure the popup is focused and on top
-    if (popup) {
-      popup.focus();
+    if (currentPopup) {
+      currentPopup.focus();
+
+      // Watch for popup close
+      popupCloseWatcher = setInterval(() => {
+        if (currentPopup && currentPopup.closed) {
+          clearInterval(popupCloseWatcher);
+          popupCloseWatcher = null;
+          currentPopup = null;
+          // Notify the iframe that screensharing stopped
+          if (popupMessageSource) {
+            popupMessageSource.postMessage(
+              { type: "MENTOR:SCREENSHARING_STOPPED" },
+              popupMessageOrigin
+            );
+          }
+        }
+      }, 500);
     }
+  }
+
+  // Handle MENTOR:SCREENSHARING_STARTED from popup - forward to iframe
+  if (data.type === "MENTOR:SCREENSHARING_STARTED" && event.source === currentPopup) {
+    if (popupMessageSource) {
+      popupMessageSource.postMessage(
+        { type: "MENTOR:SCREENSHARING_STARTED" },
+        popupMessageOrigin
+      );
+    }
+  }
+
+  // Handle MENTOR:SCREENSHARING_STOPPED from popup - close popup and forward to iframe
+  if (data.type === "MENTOR:SCREENSHARING_STOPPED" && event.source === currentPopup) {
+    if (currentPopup && !currentPopup.closed) {
+      currentPopup.close();
+    }
+    if (popupCloseWatcher) {
+      clearInterval(popupCloseWatcher);
+      popupCloseWatcher = null;
+    }
+    currentPopup = null;
+    if (popupMessageSource) {
+      popupMessageSource.postMessage(
+        { type: "MENTOR:SCREENSHARING_STOPPED" },
+        popupMessageOrigin
+      );
+    }
+  }
+
+  // Handle ACTION:FOCUS - focus parent window (keep popup open)
+  if (data.type === "ACTION:FOCUS") {
+    // Blur the popup first, then focus parent window
+    if (currentPopup && !currentPopup.closed) {
+      currentPopup.blur();
+    }
+    window.focus();
   }
 }
 
