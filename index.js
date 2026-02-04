@@ -18,7 +18,7 @@ let cutOffWidth = 768;
 let iblMentorLogoUrl =
   "https://s3.us-east-1.amazonaws.com/iblai-app-dm-static/public-images/public/mentor/profile/mentorAI.png";
 let iblMentorSdkUrl =
-  "https://assets.ibl.ai/web/mentorai.js?versionId=ySugLtwLUokq4oTeJFdISgk13EqN7DI1";
+  "https://assets.ibl.ai/web/mentorai.js?versionId=pPmadQNXEvvyu86hWFnmbuwCop1zWk4E";
 let currentPopup = null;
 let popupMessageSource = null;
 let popupMessageOrigin = null;
