@@ -378,7 +378,7 @@ function handleIframeMessage(event) {
   }
 
   // Handle MENTOR:SCREENSHARING_STOPPED from popup - close popup and forward to iframe
-  if (data.type === "MENTOR:SCREENSHARING_STOPPED" && event.source === currentPopup) {
+  if (data.type === "MENTOR:SCREENSHARING_STOPPED") {
     if (currentPopup && !currentPopup.closed) {
       currentPopup.close();
     }
