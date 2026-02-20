@@ -1,9 +1,9 @@
 /* -- Modify the following for each implementation -- */
 
 // Provider of the LTI component
-let baseLmsDomain = "https://learn.iblai.org";
-let org = "canvas1"; // Organization slug for context API
-let ltiToolId = "219";
+let baseLmsDomain = "https://learn.iblai.app";
+let org = "1721338078"; // Organization slug for context API
+let ltiToolId = "225";
 
 // Consumer of the LTI component
 let baseCanvasDomain = "https://ibleducation.instructure.com";
@@ -18,7 +18,7 @@ let cutOffWidth = 768;
 let iblMentorLogoUrl =
   "https://s3.us-east-1.amazonaws.com/iblai-app-dm-static/public-images/public/mentor/profile/mentorAI.png";
 let iblMentorSdkUrl =
-  "https://assets.ibl.ai/web/mentorai.js?versionId=lwlz6J4qCvnjt0KtVA7zQPHsAsF8fdCp";
+  "https://assets.ibl.ai/web/mentorai.js?versionId=KO5Pj8dqBvgRSjVv0xpYw0RbnpFq4kMJ";
 let currentPopup = null;
 let popupMessageSource = null;
 let popupMessageOrigin = null;
@@ -339,14 +339,16 @@ function handleIframeMessage(event) {
     const popupHeight = 600;
     const left = (window.screen.width - popupWidth) / 2;
     const top = (window.screen.height - popupHeight) / 2;
+    const popupName = `ibl_mentorai_popup_${Date.now()}`;
     currentPopup = window.open(
       data.payload.url,
-      "_blank",
+      popupName,
       `width=${popupWidth},height=${popupHeight},left=${left},top=${top},toolbar=no,location=yes,directories=no,status=no,menubar=no,resizable=yes,scrollbars=yes`
     );
 
-    // Ensure the popup is focused and on top
+    // Save popup name to localStorage and ensure focus
     if (currentPopup) {
+      localStorage.setItem("ibl_mentorai_popup_name", popupName);
       currentPopup.focus();
 
       // Watch for popup close
@@ -381,12 +383,22 @@ function handleIframeMessage(event) {
   if (data.type === "MENTOR:SCREENSHARING_STOPPED") {
     if (currentPopup && !currentPopup.closed) {
       currentPopup.close();
+    } else {
+      // Try to close popup using localStorage name reference
+      const popupName = localStorage.getItem("ibl_mentorai_popup_name");
+      if (popupName) {
+        const existingPopup = window.open("", popupName);
+        if (existingPopup && !existingPopup.closed) {
+          existingPopup.close();
+        }
+      }
     }
     if (popupCloseWatcher) {
       clearInterval(popupCloseWatcher);
       popupCloseWatcher = null;
     }
     currentPopup = null;
+    localStorage.removeItem("ibl_mentorai_popup_name");
     if (popupMessageSource) {
       popupMessageSource.postMessage(
         { type: "MENTOR:SCREENSHARING_STOPPED" },
@@ -395,12 +407,87 @@ function handleIframeMessage(event) {
     }
   }
 
+  // Handle MENTOR:SCREENSHARING_SPEAKING from popup - forward to iframe
+  if (data.type === "MENTOR:SCREENSHARING_SPEAKING" && event.source === currentPopup) {
+    if (popupMessageSource) {
+      popupMessageSource.postMessage(
+        { type: "MENTOR:SCREENSHARING_SPEAKING", speaking: data.speaking },
+        popupMessageOrigin
+      );
+    }
+  }
+
+  // Handle MENTOR:SCREENSHARING_MUTED - forward between popup and iframe
+  if (data.type === "MENTOR:SCREENSHARING_MUTED") {
+    if (event.source === currentPopup) {
+      // From popup, forward to iframe
+      if (popupMessageSource) {
+        popupMessageSource.postMessage(
+          { type: "MENTOR:SCREENSHARING_MUTED", muted: data.muted },
+          popupMessageOrigin
+        );
+      }
+    } else if (currentPopup && !currentPopup.closed) {
+      // From iframe, forward to popup
+      currentPopup.postMessage(
+        { type: "MENTOR:SCREENSHARING_MUTED", muted: data.muted },
+        "*"
+      );
+    }
+  }
+
+  // Handle MENTOR:SCREENSHARING_MENTOR_MUTED - forward between popup and iframe
+  if (data.type === "MENTOR:SCREENSHARING_MENTOR_MUTED") {
+    if (event.source === currentPopup) {
+      // From popup, forward to iframe
+      if (popupMessageSource) {
+        popupMessageSource.postMessage(
+          { type: "MENTOR:SCREENSHARING_MENTOR_MUTED", muted: data.muted },
+          popupMessageOrigin
+        );
+      }
+    } else if (currentPopup && !currentPopup.closed) {
+      // From iframe, forward to popup
+      currentPopup.postMessage(
+        { type: "MENTOR:SCREENSHARING_MENTOR_MUTED", muted: data.muted },
+        "*"
+      );
+    }
+  }
+
+  // Handle MENTOR:SCREENSHARING_STATUS - respond with current screensharing state
+  if (data.type === "MENTOR:SCREENSHARING_STATUS") {
+    let isScreensharing = false;
+    if (currentPopup && !currentPopup.closed) {
+      isScreensharing = true;
+    } else {
+      const popupName = localStorage.getItem("ibl_mentorai_popup_name");
+      if (popupName) {
+        const existingPopup = window.open("", popupName);
+        if (existingPopup && !existingPopup.closed && existingPopup.location.href !== "about:blank") {
+          isScreensharing = true;
+        } else {
+          localStorage.removeItem("ibl_mentorai_popup_name");
+        }
+      }
+    }
+    event.source.postMessage(
+      { type: isScreensharing ? "MENTOR:SCREENSHARING_STARTED" : "MENTOR:SCREENSHARING_STOPPED" },
+      event.origin
+    );
+  }
+
   // Handle ACTION:FOCUS - focus parent window (keep popup open)
   if (data.type === "ACTION:FOCUS") {
     // Blur the popup first, then focus parent window
     if (currentPopup && !currentPopup.closed) {
       currentPopup.blur();
     }
+    window.focus();
+  }
+
+  // Handle MENTOR:FOCUS_PARENT - focus the parent window
+  if (data.type === "MENTOR:FOCUS_PARENT") {
     window.focus();
   }
 }
@@ -609,6 +696,23 @@ document.addEventListener("DOMContentLoaded", () => {
       const iframe = await loginAndLaunchLTI();
       if (iframe) {
         launchLTI(iframe);
+
+        // On page refresh, check if popup is still open and notify iframe
+        const popupName = localStorage.getItem("ibl_mentorai_popup_name");
+        if (popupName) {
+          const existingPopup = window.open("", popupName);
+          if (existingPopup && !existingPopup.closed && existingPopup.location.href !== "about:blank") {
+            iframe.addEventListener("load", () => {
+              iframe.contentWindow.postMessage(
+                { type: "MENTOR:SCREENSHARING_STARTED" },
+                "*"
+              );
+            });
+          } else {
+            // Popup no longer exists, clean up
+            localStorage.removeItem("ibl_mentorai_popup_name");
+          }
+        }
       }
     }
 
