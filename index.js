@@ -23,6 +23,7 @@ let currentPopup = null;
 let popupMessageSource = null;
 let popupMessageOrigin = null;
 let popupCloseWatcher = null;
+let FRAME_COLLAPSED_STATE_LOCAL_STORAGE_KEY = "ibl_mentor_wrapper_collapsed";
 
 // Global variable for paths where LTI should be shown
 const LTI_ALLOWED_PATHS = [
@@ -192,7 +193,7 @@ function loadScript(url) {
 function loadCanvas() {
   // Check the window width to determine if we are on medium or small devices
   const isMediumOrSmallDevice = window.innerWidth < cutOffWidth; // Adjust the breakpoint as needed
-  const savedCollapsedState = localStorage.getItem("ibl_mentor_wrapper_collapsed") === "true";
+  const savedCollapsedState = localStorage.getItem(FRAME_COLLAPSED_STATE_LOCAL_STORAGE_KEY) === "true";
   const wrapper = document.getElementById("wrapper");
   if (wrapper && !isMediumOrSmallDevice && !savedCollapsedState) {
     wrapper.style.marginRight = `${draggedWidth}px`;
@@ -254,7 +255,7 @@ function toggleIframe(isMobileDevice, collapse = true) {
   }
 
   isIframeCollapsed = collapse;
-  localStorage.setItem("ibl_mentor_wrapper_collapsed", collapse ? "true" : "false");
+  localStorage.setItem(FRAME_COLLAPSED_STATE_LOCAL_STORAGE_KEY, collapse ? "true" : "false");
 }
 
 // Function to create logo button in the crumbs area
@@ -517,7 +518,7 @@ function launchLTI(iframe) {
   const isMobileDevice = window.innerWidth < cutOffWidth;
 
   // Check saved collapsed state early to avoid flash
-  const savedCollapsedState = localStorage.getItem("ibl_mentor_wrapper_collapsed") === "true";
+  const savedCollapsedState = localStorage.getItem(FRAME_COLLAPSED_STATE_LOCAL_STORAGE_KEY) === "true";
   isIframeCollapsed = savedCollapsedState;
 
   const iframeWrapper = document.createElement("div");
