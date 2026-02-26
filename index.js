@@ -225,7 +225,7 @@ function injectSessionIframe(url) {
 }
 
 // Function to handle iframe collapse/expand
-function toggleIframe(isMobileDevice, collapse = true) {
+function toggleIframe(isMobileDevice, collapse = true, showFloatingLogo = true) {
   const iframeWrapper = document.querySelector("#mentor-ai-wrapper");
   const logoButton = document.querySelector("#mentor-ai-logo");
   const wrapper = document.getElementById("wrapper");
@@ -236,14 +236,16 @@ function toggleIframe(isMobileDevice, collapse = true) {
     if (!isMobileDevice) {
       iframeWrapper.style.transform = "translateX(100%)";
       iframeWrapper.style.transition = "transform 0.3s ease-in-out";
-      logoButton.style.display = "block";
-      logoButton.style.transform = "translateX(0)";
-      logoButton.style.transition = "transform 0.3s ease-in-out";
+      if (showFloatingLogo) {
+        logoButton.style.display = "block";
+        logoButton.style.transform = "translateX(0)";
+        logoButton.style.transition = "transform 0.3s ease-in-out";
+      }
     } else {
       iframeWrapper.style.display = "none";
     }
     if (wrapper && !isMobileDevice) {
-      wrapper.style.marginRight = `${draggedWidth}px`;
+      wrapper.style.marginRight = "0";
     }
   } else {
     if (!isMobileDevice) {
@@ -261,6 +263,66 @@ function toggleIframe(isMobileDevice, collapse = true) {
   }
 
   isIframeCollapsed = collapse;
+}
+
+// Function to create crumbs logo button (prepended to .right-of-crumbs.right-of-crumbs-no-reverse)
+function createCrumbsLogoButton(isMobileDevice) {
+  const tryAddButton = () => {
+    const crumbsContainer = document.querySelector(
+      ".right-of-crumbs.right-of-crumbs-no-reverse"
+    );
+    if (!crumbsContainer) return false;
+
+    // Check if button already exists
+    if (document.getElementById("mentor-ai-crumbs-logo")) return true;
+
+    const logoButton = document.createElement("div");
+    logoButton.id = "mentor-ai-crumbs-logo";
+    logoButton.style.cssText = `
+      width: 32px;
+      height: 32px;
+      background: white;
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.3s ease-in-out;
+      flex-shrink: 0;
+    `;
+
+    const logoImg = document.createElement("img");
+    logoImg.src = iblMentorLogoUrl;
+    logoImg.style.cssText = `
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: 50%;
+    `;
+
+    logoButton.appendChild(logoImg);
+    logoButton.addEventListener("click", () =>
+      toggleIframe(isMobileDevice, !isIframeCollapsed, false)
+    );
+    crumbsContainer.appendChild(logoButton);
+    return true;
+  };
+
+  // Try immediately
+  if (tryAddButton()) return;
+
+  // If element not found, observe for it
+  const observer = new MutationObserver((_mutationsList, obs) => {
+    if (tryAddButton()) {
+      obs.disconnect();
+    }
+  });
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
 }
 
 // Function to create logo button
@@ -671,6 +733,7 @@ function launchLTI(iframe) {
         });
     }
     createLogoButton(isMobileDevice);
+    createCrumbsLogoButton(isMobileDevice);
   }
 
   function setCookie(name, value, days) {
