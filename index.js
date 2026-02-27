@@ -23,6 +23,7 @@ let currentPopup = null;
 let popupMessageSource = null;
 let popupMessageOrigin = null;
 let popupCloseWatcher = null;
+let FRAME_COLLAPSED_STATE_LOCAL_STORAGE_KEY = "ibl_mentor_wrapper_collapsed";
 
 // Global variable for paths where LTI should be shown
 const LTI_ALLOWED_PATHS = [
@@ -138,7 +139,8 @@ function loginAndLaunchLTI() {
             iframe.title = "mentorAI";
             iframe.allow =
               "clipboard-read; clipboard-write; microphone *; camera *; midi *; geolocation *; encrypted-media *; display-capture *";
-            // iframe.style.display = "none";
+            // Hide iframe initially to prevent flash before it's placed in wrapper
+            iframe.style.display = "none";
             document.body.appendChild(iframe);
 
             const form = document.createElement("form");
@@ -191,8 +193,9 @@ function loadScript(url) {
 function loadCanvas() {
   // Check the window width to determine if we are on medium or small devices
   const isMediumOrSmallDevice = window.innerWidth < cutOffWidth; // Adjust the breakpoint as needed
+  const savedCollapsedState = localStorage.getItem(FRAME_COLLAPSED_STATE_LOCAL_STORAGE_KEY) === "true";
   const wrapper = document.getElementById("wrapper");
-  if (wrapper && !isMediumOrSmallDevice) {
+  if (wrapper && !isMediumOrSmallDevice && !savedCollapsedState) {
     wrapper.style.marginRight = `${draggedWidth}px`;
   }
 }
@@ -225,22 +228,13 @@ function injectSessionIframe(url) {
 }
 
 // Function to handle iframe collapse/expand
-function toggleIframe(isMobileDevice, collapse = true, showFloatingLogo = true) {
+function toggleIframe(isMobileDevice, collapse = true) {
   const iframeWrapper = document.querySelector("#mentor-ai-wrapper");
-  const logoButton = document.querySelector("#mentor-ai-logo");
   const wrapper = document.getElementById("wrapper");
-  if (!isMobileDevice) {
-  } else {
-  }
   if (collapse) {
     if (!isMobileDevice) {
       iframeWrapper.style.transform = "translateX(100%)";
       iframeWrapper.style.transition = "transform 0.3s ease-in-out";
-      if (showFloatingLogo) {
-        logoButton.style.display = "block";
-        logoButton.style.transform = "translateX(0)";
-        logoButton.style.transition = "transform 0.3s ease-in-out";
-      }
     } else {
       iframeWrapper.style.display = "none";
     }
@@ -249,11 +243,9 @@ function toggleIframe(isMobileDevice, collapse = true, showFloatingLogo = true) 
     }
   } else {
     if (!isMobileDevice) {
+      iframeWrapper.style.display = "flex";
       iframeWrapper.style.transform = "translateX(0)";
-      logoButton.style.transform = "translateX(-100%)";
-      setTimeout(() => {
-        logoButton.style.display = "none";
-      }, 300);
+      iframeWrapper.style.transition = "transform 0.3s ease-in-out";
     } else {
       iframeWrapper.style.display = "flex";
     }
@@ -263,10 +255,11 @@ function toggleIframe(isMobileDevice, collapse = true, showFloatingLogo = true) 
   }
 
   isIframeCollapsed = collapse;
+  localStorage.setItem(FRAME_COLLAPSED_STATE_LOCAL_STORAGE_KEY, collapse ? "true" : "false");
 }
 
-// Function to create crumbs logo button (prepended to .right-of-crumbs.right-of-crumbs-no-reverse)
-function createCrumbsLogoButton(isMobileDevice) {
+// Function to create logo button in the crumbs area
+function createLogoButton(isMobileDevice) {
   const tryAddButton = () => {
     const crumbsContainer = document.querySelector(
       ".right-of-crumbs.right-of-crumbs-no-reverse"
@@ -274,10 +267,10 @@ function createCrumbsLogoButton(isMobileDevice) {
     if (!crumbsContainer) return false;
 
     // Check if button already exists
-    if (document.getElementById("mentor-ai-crumbs-logo")) return true;
+    if (document.getElementById("mentor-ai-logo")) return true;
 
     const logoButton = document.createElement("div");
-    logoButton.id = "mentor-ai-crumbs-logo";
+    logoButton.id = "mentor-ai-logo";
     logoButton.style.cssText = `
       width: 32px;
       height: 32px;
@@ -303,7 +296,7 @@ function createCrumbsLogoButton(isMobileDevice) {
 
     logoButton.appendChild(logoImg);
     logoButton.addEventListener("click", () =>
-      toggleIframe(isMobileDevice, !isIframeCollapsed, false)
+      toggleIframe(isMobileDevice, !isIframeCollapsed)
     );
     crumbsContainer.appendChild(logoButton);
     return true;
@@ -323,43 +316,6 @@ function createCrumbsLogoButton(isMobileDevice) {
     childList: true,
     subtree: true,
   });
-}
-
-// Function to create logo button
-function createLogoButton(isMobileDevice) {
-  const logoButton = document.createElement("div");
-  logoButton.id = "mentor-ai-logo";
-  logoButton.style.cssText = `
-position: fixed;
-top: ${isMobileDevice ? "unset" : "77px"};
-right: ${isMobileDevice ? "20px" : "0"};
-bottom: ${isMobileDevice ? "10px" : "unset"};
-width: 50px;
-height: 50px;
-background: white;
-border-radius: 50%;
-box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-cursor: pointer;
-z-index: 1001;
-display: ${isMobileDevice ? "block" : "none"};
-transform: ${isMobileDevice ? "unset" : "translateX(100%)"};
-transition: ${isMobileDevice ? "unset" : "transform 0.3s ease-in-out"};
-`;
-
-  const logoImg = document.createElement("img");
-  logoImg.src = iblMentorLogoUrl;
-  logoImg.style.cssText = `
-width: 100%;
-height: 100%;
-object-fit: contain;
-border-radius: 50%;
-`;
-
-  logoButton.appendChild(logoImg);
-  logoButton.addEventListener("click", () =>
-    toggleIframe(isMobileDevice, !isIframeCollapsed)
-  );
-  document.body.appendChild(logoButton);
 }
 
 // Function to handle messages from iframe
@@ -561,8 +517,14 @@ function launchLTI(iframe) {
   const container = document.getElementById("application");
   const isMobileDevice = window.innerWidth < cutOffWidth;
 
+  // Check saved collapsed state early to avoid flash
+  const savedCollapsedState = localStorage.getItem(FRAME_COLLAPSED_STATE_LOCAL_STORAGE_KEY) === "true";
+  isIframeCollapsed = savedCollapsedState;
+
   const iframeWrapper = document.createElement("div");
   iframeWrapper.id = "mentor-ai-wrapper";
+  // On mobile, use display to hide; on desktop, use transform (display should always be flex)
+  iframeWrapper.style.display = isMobileDevice && savedCollapsedState ? "none" : "flex";
   iframeWrapper.style.width = isMobileDevice ? "300px" : `${draggedWidth}px`;
   iframeWrapper.style.height = isMobileDevice
     ? "calc(100vh - 196px)"
@@ -572,7 +534,7 @@ function launchLTI(iframe) {
     iframeWrapper.style.top = "77px";
     iframeWrapper.style.left = "unset";
     iframeWrapper.style.right = "0";
-    iframeWrapper.style.transform = "unset";
+    iframeWrapper.style.transform = savedCollapsedState ? "translateX(100%)" : "unset";
   } else {
     iframeWrapper.style.bottom = "65px";
     iframeWrapper.style.right = "20px";
@@ -580,13 +542,12 @@ function launchLTI(iframe) {
 
   iframeWrapper.style.zIndex = "1000";
   iframeWrapper.style.boxShadow = "0 0 10px rgba(0, 0, 0, 0.2)";
-  iframeWrapper.style.display = "flex";
   iframeWrapper.style.transition = "transform 0.3s ease-in-out";
 
   if (!isMobileDevice) {
     const wrapper = document.getElementById("wrapper");
     if (wrapper) {
-      wrapper.style.marginRight = `${draggedWidth}px`;
+      wrapper.style.marginRight = savedCollapsedState ? "0" : `${draggedWidth}px`;
     }
   }
 
@@ -597,6 +558,7 @@ function launchLTI(iframe) {
   resizer.style.height = "100%";
   const courseId = extractCourseId();
   if (courseId) {
+    iframe.style.display = "block"; // Show iframe now that it's in wrapper
     iframe.style.width = `calc(100% - ${resizerWidth}px)`;
     iframe.style.height = "100%";
     iframe.style.border = "none";
@@ -733,7 +695,6 @@ function launchLTI(iframe) {
         });
     }
     createLogoButton(isMobileDevice);
-    createCrumbsLogoButton(isMobileDevice);
   }
 
   function setCookie(name, value, days) {
